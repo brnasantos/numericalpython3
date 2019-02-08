@@ -29,32 +29,49 @@ class Problem_Set_2_1_Test(unittest.TestCase):
     def test_byGaussElimin(self):
         A = asarray([[2,-3,-1],[3,2,-5],[2,4,-1]], dtype = float)
         B = asarray([[3],[-9],[-5]], dtype = float)
-        Expected_x = asarray([[32/49],[-8/7],[85/49]], dtype = float)
+        expected_x = asarray([[32/49],[-8/7],[85/49]], dtype = float)
         x = solvers.byGaussElimin(self,A,B)
-        self.assertAlmostEqual(Expected_x.all(), x.all(), delta = 0.0001)
+        n = len(expected_x.tolist())
+        for i in range(n-1): self.assertAlmostEqual(expected_x[i], x[i], delta = 0.0001)
 
     def test_byLUdecomp(self):
         A = asarray([[4,-2,-3], [12,4,-10],[-16,28,18]], dtype = float)
         B = asarray([[1.1],[0],[-2.3]], dtype = float)
-        Expected_x = asarray([[(1.1+(-3.3+8.7/8)/5+3*8.7/8)/4],[(-3.3+8.7/8)/10],[8.7/8]], dtype = float)
+        expected_x = asarray([[(1.1+(-3.3+8.7/8)/5+3*8.7/8)/4],[(-3.3+8.7/8)/10],[8.7/8]], dtype = float)
         x = solvers.byLUdecomp(self,A,B)
-        self.assertAlmostEqual(Expected_x.all(), x.all(), delta = 0.0001)
+        n = len(expected_x.tolist())
+        for i in range(n-1): self.assertAlmostEqual(expected_x[i], x[i], delta = 0.0001)
 
     def test_byCholeski(self):
         A = asarray([[1,1,1],[1,2,2],[1,2,3]], dtype = float)
         B = asarray([[1],[3/2],[3]], dtype = float)
-        Expected_x = asarray([[1/2],[-1],[3/2]], dtype = float)
+        expected_x = asarray([[1/2],[-1],[3/2]], dtype = float)
         x = solvers.byCholeski(self,A,B)
-        self.assertAlmostEqual(Expected_x.all(), x.all(), delta = 0.0001)
+        n = len(expected_x.tolist())
+        for i in range(n-1): self.assertAlmostEqual(expected_x[i], x[i], delta = 0.0001)
 
     def test_byLUdecomp3(self):
         d = ones((5))*2.0
         c = ones((4))*(-1.0)
         b = array([5.0, -5.0, 4.0, -5.0, 5.0])
         e = c.copy()
-        x = solvers.byLUsolve3(self,c,d,e,b)
-        expected_x = asarray([[2.], [-1.], [1.], [-1.],[2.]],dtype = float)
-        self.assertAlmostEqual(Expected_x.all(), x.all(), delta = 0.0001)
-        
-        
-        
+        x = solvers.byLUdecomp3(self,c,d,e,b)
+        expected_x = asarray([2., -1., 1., -1.,2.],dtype = float)
+        n = len(expected_x.tolist())
+        for i in range(n-1): self.assertAlmostEqual(expected_x[i], x[i], delta = 0.0001)
+
+    def test_gaussPivot(self):
+        A = array([[2,-2,6],[-2,4,3],[-1,8,4]], dtype= float)
+        B = array([[16],[0],[-1]], dtype = float)
+        x = solvers.gaussPivot(self,A,B)
+        expected_x = array([[1],[-1],[2]])
+        n = len(expected_x.tolist())
+        for i in range(n-1): self.assertAlmostEqual(expected_x[i], x[i], delta = 0.0001)
+
+    def test_LUPivot(self):
+        A = array([[2,-2,6],[-2,4,3],[-1,8,4]], dtype= float)
+        B = array([[16],[0],[-1]], dtype = float)
+        x = solvers.LUpivot(self,A,B)
+        expected_x = array([[1],[-1],[2]])
+        n = len(expected_x.tolist())
+        for i in range(n-1): self.assertAlmostEqual(expected_x[i], x[i], delta = 0.0001)
