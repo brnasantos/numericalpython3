@@ -5,7 +5,7 @@ import choleski as ch
 import LUdecomp3 as lu3
 import LUdecomp5 as lu5
 import gaussPivot as gpivot
-import LUpivot 
+import LUpivot
 
 class solvers:
     def getA(self,L,U):
@@ -31,19 +31,18 @@ class solvers:
     def byCholeski(self,A,B):
         L = ch.choleski(A)
         return ch.choleskiSol(L,B)
-    
+
     def byLUdecomp3(self,c,d,e,b):
         c,d,e= lu3.LUdecomp3(c,d,e)
         return lu3.LUsolve3(c,d,e,b)
-    
+
     def byLUdecomp5(self,d,e,f,b):
         d,e,f = lu5.LUdecomp5(d,e,f,b)
         return lu5.LUsolve5(d,e,f,b)
-    
+
     def gaussPivot(self,a,b):
         return gpivot.gaussPivot(a,b)
-    
+
     def LUpivot(self,a,b):
         a,seq = LUpivot.LUdecomp(a)
         return LUpivot.LUsolve(a,b,seq)
-    
