@@ -1,4 +1,5 @@
 from numpy import asarray, prod, diag, dot
+import numpy as *
 import LUdecomp as lu
 import gaussElimin as gauss
 import choleski as ch
