@@ -2,7 +2,7 @@ import numpy as np
 import math
 import swap
 import sys
-from gaussPivot import *
+
 
 class solvers:
     def getA(self,L,U):
