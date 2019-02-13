@@ -1,6 +1,8 @@
 import numpy as np
 import math
 import swap
+import sys
+from gaussPivot import *
 
 class solvers:
     def getA(self,L,U):
@@ -175,7 +177,7 @@ class solvers:
         Solves [a]{x} = {b} by Gauss elimination with
         scaled row pivoting'''
 
-        def gaussPivot(a,b,tol=1.0e-12):
+        def gausspivot(a,b,tol=1.0e-12):
             n = len(b)
         # Set up scale factors
             s = np.zeros(n)
@@ -208,7 +210,7 @@ class solvers:
                 b[k] = (b[k] - np.dot(a[k,k+1:n],b[k+1:n]))/a[k,k]
             return b
         # Solving the parameters problem.
-        return gaussPivot(a,b)
+        return gausspivot(a,b)
 
     def LUpivot(self,a,b):
     #    '''Using LU Pivoting to solve matrix problems.
@@ -269,3 +271,124 @@ class solvers:
         # Solving the parameters problem.
         a,seq = LUpivotdecomp(a)
         return LUpivotsolve(a,b,seq)
+
+    def rootsearch(f,a,b,dx):
+        x1 = a
+        f1 = f(a)
+        x2 = a + dx
+        f2 = f(x2)
+        while np.sign(f1) == np.sign(f2):
+            if x1 >= b:
+                return None,None
+            x1 = x2; f1 = f2
+            x2 = x1 + dx; f2 = f(x2)
+        else:
+            return x1,x2
+
+    def bisection(f,x1,x2,switch=1,tol=1.0e-9):
+        f1 = f(x1)
+        if f1 == 0.0:
+            return x1
+        f2 = f(x2)
+        if f2 == 0.0:
+            return x2
+        if np.sign(f1) == np.sign(f2):
+            print ('Root is not bracketed')
+            sys.exit()
+        n = int(math.ceil(math.log(abs(x2 - x1)/tol)/math.log(2.0)))
+        for i in range(n):
+            x3 = 0.5*(x1 + x2)
+            f3 = f(x3)
+        if (switch == 1) and (abs(f3) > abs(f1)) and (abs(f3) > abs(f2)):
+            return None
+        if f3 == 0.0:
+            return x3
+        if np.sign(f2)!= np.sign(f3):
+            x1 = x3
+            f1 = f3
+        else:
+            x2 = x3
+            f2 = f3
+        return (x1 + x2)/2.0
+
+#    def singular_problem(f,a,b,dx):
+#        x = []
+#        while True:
+#            x1,x2 = solvers.rootsearch(f,a,b,dx)
+#            if x1 != None:
+#                a = x2
+#                root = solvers.bisection(f,x1,x2,1)
+#                if root != None:
+#                    x.append(root)
+#            else:
+#                break
+#        return x
+
+    def ridder(f,a,b,tol=1.0e-9):
+        fa = f(a)
+        if fa == 0.0:
+            return a
+        fb = f(b)
+        if fb == 0.0:
+            return b
+        if fa*fb > 0.0:
+            print('Root is not bracketed')
+            sys.exit()
+        for i in range(30):
+            # Compute the improved root x from Ridder’s formula
+            c = 0.5*(a + b); fc = f(c)
+            s = math.sqrt(fc**2 - fa*fb)
+            if s == 0.0:
+                return None
+            dx = (c - a)*fc/s
+            if (fa - fb) < 0.0:
+                dx = -dx
+            x = c + dx
+            fx = f(x)
+            # Test for convergence
+            if i > 0:
+                if abs(x - xOld) < tol*max(abs(x),1.0):
+                    return x
+            xOld = x
+            # Re-bracket the root as tightly as possible
+            if fc*fx > 0.0:
+                if fa*fx < 0.0:
+                    b = x
+                    fb = fx
+                else:
+                    a = x
+                    fa = fx
+            else:
+                a = c
+                b = x
+                fa = fc
+                fb = fx
+        return None
+
+    def newtonRaphson(f,df,x,tol=1.0e-9):
+        for i in range(30):
+            dx = -f(x)/df(x)
+            x = x + dx
+            if abs(dx) < tol:
+                return x
+
+    def newtonRaphson2(f,x,tol=1.0e-9):
+        def jacobian(f,x):
+            h = 1.0e-4
+            n = len(x)
+            jac = np.zeros((n,n))
+            f0 = f(x)
+            for i in range(n):
+                temp = x[i]
+                x[i] = temp + h
+                f1 = f(x)
+                x[i] = temp
+                jac[:,i] = (f1 - f0)/h
+                return jac,f0
+            for i in range(30):
+                    jac,f0 = jacobian(f,x)
+                    if math.sqrt(np.dot(f0,f0)/len(x)) < tol: return x
+                    dx = solvers.gaussPivot(jac,-f0)
+                    x = x + dx
+                    if math.sqrt(np.dot(dx,dx)) < tol*max(max(abs(x)),1.0):
+                        return x
