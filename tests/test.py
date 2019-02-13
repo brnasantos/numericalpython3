@@ -3,6 +3,7 @@ import numpy as np
 import sys
 sys.path.insert(0,'../')
 from Solvers import solvers
+import math 
 
 class TestProblemSet2(unittest.TestCase):
     def test_getA(self):
@@ -184,3 +185,80 @@ class TestProblemSet2(unittest.TestCase):
         n = len(expected_x.tolist())
         for i in range(n):
             self.assertAlmostEqual(expected_x[i], x[i], delta = 0.0001)
+
+
+
+    def test_rootsearch(self):
+        def f(x):
+            return x**3 - 10.0*x**2 + 5.0
+        x1 = 0.0
+        x2 = 1.0
+        for i in range(4):
+            dx = (x2 - x1)/10.0
+            x1,x2 = solvers.rootsearch(f,x1,x2,dx)
+        x = []
+        x.append((x1 + x2)/2.0)
+        expected_x = []
+        expected_x.append(0.7346)
+        n = len(expected_x)
+        for i in range(n):
+            self.assertAlmostEqual(expected_x[i], x[i], delta = 0.05)
+
+    def test_bisection(self):
+        def f(x):
+            return x**3 - 10.0*x**2 + 5.0
+        x = []
+        x.append(solvers.bisection(f, 0.0, 1.0, tol=1.0e-4))
+        expected_x = []
+        expected_x.append(0.7346)
+        n = len(expected_x)
+        for i in range(n):
+            self.assertAlmostEqual(expected_x[i], x[i], delta = 0.05)
+
+
+#    def test_singular_problem(self):
+#        def f(x):
+#            return x - math.tan(x)
+#        a,b,dx = (0.0, 20.0, 0.01)
+#        x = []
+#        x.append(solvers.singular_problem(f,a,b,dx))
+#        expected_x = [0.0, 4.493409458100745, 7.725251837074637,
+#        10.904121659695917, 14.06619391292308, 17.220755272209537]
+#        n = len(expected_x)
+#        for i in range(n):
+#            self.assertAlmostEqual(expected_x[i], x[i], delta = 0.000)
+
+    def test_ridder(self):
+        def f(x):
+            a = (x - 0.3)**2 + 0.01
+            b = (x - 0.8)**2 + 0.04
+            return 1.0/a - 1.0/b
+        x = []
+        x.append(solvers.ridder(f,0.0,1.0))
+        expected_x = []
+        expected_x.append(0.5800000000000001)
+        n = len(expected_x)
+        for i in range(n):
+            self.assertAlmostEqual(expected_x[i], x[i], delta = 0.000001)
+
+    def test_newtonraphson(self):
+        def f(x): return x**4 - 6.4*x**3 + 6.45*x**2 + 20.538*x - 31.752
+        def df(x): return 4.0*x**3 - 19.2*x**2 + 12.9*x + 20.538
+        x = []
+        x.append(solvers.newtonRaphson(f,df,2.0))
+        expected_x = []
+        expected_x.append(2.09999998403)
+        n = len(expected_x)
+        for i in range(n):
+            self.assertAlmostEqual(expected_x[i], x[i], delta = 0.000001)
+
+    def test_newtonRaphson2(self):
+        def f(x):
+            f = np.zeros(len(x))
+            f[0] = math.sin(x[0]) + x[1]**2 + math.log(x[2]) - 7.0
+            f[1] = 3.0*x[0] + 2.0**x[1] - x[2]**3 + 1.0
+            f[2] = x[0] + x[1] + x[2] - 5.0
+            return f
+        x = np.array([1.0, 1.0, 1.0])
+        result = (solvers.newtonRaphson2(f,x))
+        self.assertEqual(result,None)
