@@ -3,7 +3,8 @@ import numpy as np
 import sys
 sys.path.insert(0,'../')
 from Solvers import solvers
-import math 
+import math
+import pandas as pd
 
 class TestProblemSet2(unittest.TestCase):
     def test_getA(self):
@@ -41,9 +42,6 @@ class TestProblemSet2(unittest.TestCase):
 
         self.assertAlmostEqual(determinant, Expected_Determinant, delta=0.0001)
 
-
-
-
     def test_get_determinant_from_L_and_U(self):
         L = np.asarray([[1, 0, 0],
                         [1, 1, 0],
@@ -58,9 +56,6 @@ class TestProblemSet2(unittest.TestCase):
         determinant = solvers.get_determinant_from_L_and_U(self,L,U)
 
         self.assertAlmostEqual(determinant, Expected_Determinant, delta = 0.0001)
-
-
-
 
     def test_byGaussElimin(self):
         A = np.asarray([[2, -3, -1],
@@ -79,9 +74,6 @@ class TestProblemSet2(unittest.TestCase):
 
         for i in range(n):
             self.assertAlmostEqual(expected_x[i], x[i], delta = 0.0001)
-
-
-
 
     def test_byLUdecomp(self):
         A = np.asarray([[4, -2, -3],
@@ -102,9 +94,6 @@ class TestProblemSet2(unittest.TestCase):
 
         for i in range(n):
             self.assertAlmostEqual(expected_x[i], x[i], delta = 0.0001)
-
-
-
 
     def test_byCholeski(self):
         A = np.asarray([[1, 1, 1],
@@ -127,9 +116,6 @@ class TestProblemSet2(unittest.TestCase):
         for i in range(n):
             self.assertAlmostEqual(expected_x[i], x[i], delta = 0.0001)
 
-
-
-
     def test_byLUdecomp3(self):
         d = np.ones((5))*2.0
         c = np.ones((4))*(-1.0)
@@ -140,9 +126,6 @@ class TestProblemSet2(unittest.TestCase):
         n = len(expected_x.tolist())
         for i in range(n):
             self.assertAlmostEqual(expected_x[i], x[i], delta = 0.0001)
-
-
-
 
     def test_gaussPivot(self):
         A = np.array([[2, -2, 6],
@@ -163,10 +146,6 @@ class TestProblemSet2(unittest.TestCase):
         for i in range(n):
             self.assertAlmostEqual(expected_x[i], x[i], delta = 0.0001)
 
-
-
-
-
     def test_LUPivot(self):
         A = np.array([[2, -2, 6],
                       [-2, 4, 3],
@@ -185,8 +164,6 @@ class TestProblemSet2(unittest.TestCase):
         n = len(expected_x.tolist())
         for i in range(n):
             self.assertAlmostEqual(expected_x[i], x[i], delta = 0.0001)
-
-
 
     def test_rootsearch(self):
         def f(x):
@@ -214,19 +191,6 @@ class TestProblemSet2(unittest.TestCase):
         n = len(expected_x)
         for i in range(n):
             self.assertAlmostEqual(expected_x[i], x[i], delta = 0.05)
-
-
-#    def test_singular_problem(self):
-#        def f(x):
-#            return x - math.tan(x)
-#        a,b,dx = (0.0, 20.0, 0.01)
-#        x = []
-#        x.append(solvers.singular_problem(f,a,b,dx))
-#        expected_x = [0.0, 4.493409458100745, 7.725251837074637,
-#        10.904121659695917, 14.06619391292308, 17.220755272209537]
-#        n = len(expected_x)
-#        for i in range(n):
-#            self.assertAlmostEqual(expected_x[i], x[i], delta = 0.000)
 
     def test_ridder(self):
         def f(x):
@@ -262,3 +226,69 @@ class TestProblemSet2(unittest.TestCase):
         x = np.array([1.0, 1.0, 1.0])
         result = (solvers.newtonRaphson2(f,x))
         self.assertEqual(result,None)
+
+    def test_central_finite_difference(self):
+        f = {'x-2h': 0.,'x-h': 0.0819,'x': 0.1341,'x+h': 0.1646,'x+2h': 0.1797}
+        n = 1
+        h = 0.1
+        expected_f1 = 0.4135
+        f1 = solvers.first_central_difference(n, h, f)
+        self.assertAlmostEqual(expected_f1, f1, delta = 0.0001)
+        n = 2
+        expected_f2 = -2.17
+        f2 = solvers.first_central_difference(n, h, f)
+        self.assertAlmostEqual(expected_f2, f2, delta = 0.0001)
+
+    def test_first_foward_finite_difference(self):
+        f = {'x': 0.,'x+h': 0.0819,'x+2h': 0.1341,'x+3h': 0.1646,'x+4h': 0.1797}
+        n = 1
+        h = 0.1
+        expected_f1 = 0.819
+        f1 = solvers.first_foward_finite_difference(n, h, f)
+        self.assertAlmostEqual(expected_f1, f1, delta = 0.0001)
+        n = 2
+        expected_f2 = -2.97
+        f2 = solvers.first_foward_finite_difference(n, h, f)
+        self.assertAlmostEqual(expected_f2, f2, delta = 0.0001)
+
+    def test_first_backward_finite_difference(self):
+        f = {'x-4h': 0.,'x-3h': 0.0819,'x-2h': 0.1341,'x-h': 0.1646,'x': 0.1797}
+        n = 1
+        h = 0.1
+        expected_f1 = 0.151
+        f1 = solvers.first_backward_finite_difference(n, h, f)
+        self.assertAlmostEqual(expected_f1, f1, delta = 0.0001)
+        n = 2
+        expected_f2 = -1.54
+        f2 = solvers.first_backward_finite_difference(n, h, f)
+        self.assertAlmostEqual(expected_f2, f2, delta = 0.0001)
+
+    def test_second_foward_finite_difference(self):
+        f = {'x': 0.,'x+h': 0.0819,'x+2h': 0.1341,'x+3h': 0.1646,'x+4h': 0.1797}
+        n = 1
+        h = 0.1
+        expected_f1 = 0.9675
+        f1 = solvers.second_foward_finite_difference(n, h, f)
+        self.assertAlmostEqual(expected_f1, f1, delta = 0.0001)
+        n = 2
+        expected_f2 = -3.77
+        f2 = solvers.second_foward_finite_difference(n, h, f)
+        self.assertAlmostEqual(expected_f2, f2, delta = 0.0001)
+
+    def test_second_backward_finite_difference(self):
+        f = {'x-4h': 0.,'x-3h': 0.0819,'x-2h': 0.1341,'x-h': 0.1646,'x': 0.1797}
+        n = 1
+        h = 0.1
+        expected_f1 = 0.074
+        f1 = solvers.second_backward_finite_difference(n, h, f)
+        self.assertAlmostEqual(expected_f1, f1, delta = 0.0001)
+        n = 2
+        expected_f2 = -0.91
+        f2 = solvers.second_backward_finite_difference(n, h, f)
+        self.assertAlmostEqual(expected_f2, f2, delta = 0.0001)
+
+
+
+
+#richardson_extrapolation está funcionando, mas precisa de f1
+#f2, h1 e h2. é bom tentar resolver isso e fazer o teste
