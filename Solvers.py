@@ -1,294 +1,480 @@
-import unittest
 import numpy as np
-import sys
-sys.path.insert(0,'../')
-from Solvers import solvers
 import math
-import pandas as pd
+import swap
+import sys
 
-class TestProblemSet2(unittest.TestCase):
-    def test_getA(self):
-        """
-        This test is designed to check if all matrix entries are being read.
-        """
-        L = np.asarray([[1, 0, 0],
-                     [1, 1, 0],
-                     [1, 5 / 3, 1]], dtype=float)
 
-        U = np.asarray([[1, 2, 4],
-                        [0, 3, 21],
-                        [0, 0, 0]], dtype = float)
+class solvers:
+    def getA(self,L,U):
+        A = np.dot(L,U)
+        return A
 
+    def get_determinant_from_L_and_U(self,L,U):
         A = solvers.getA(self,L,U)
+        determinant = np.prod(np.diag(A))
+        return determinant
 
-        Expected_A = np.asarray([[1, 2, 4],
-                                 [1, 5, 25],
-                                 [1, 7, 39]], dtype=float)
+    def get_determinant_from_A(self,A):
+        determinant = np.prod(np.diag(A))
+        return determinant
 
-        rows = len(Expected_A.tolist())
-        for row in range(rows):
-            columns = len(Expected_A[row])
-            for column in range(columns):
-                self.assertAlmostEqual(Expected_A[row][column], A[row][column], delta=0.0001)
+    def byLUdecomp(self,A,B):
+        '''Using LU decomposition to solve matrix problems.
+        a = LUdecomp(a)
+        LUdecomposition: [L][U] = [a]
+        x = LUsolve(a,b)
+        Solution phase: solves [L][U]{x} = {b}
+        '''
+        def LUdecomp(a):
+            n = len(a)
+            for k in range(0,n-1):
+                for i in range(k+1,n):
+                    if a[i,k] != 0.0:
+                        lam = a [i,k]/a[k,k]
+                        a[i,k+1:n] = a[i,k+1:n] - lam*a[k,k+1:n]
+                        a[i,k] = lam
+            return a
 
-    def test_get_determinant_from_A(self):
-        Expected_A = np.asarray([[1, 2, 4],
-                                 [1, 5, 25],
-                                 [1, 7, 39]], dtype=float)
+        def LUsolve(a,b):
+            n = len(a)
+            for k in range(1,n):
+                b[k] = b[k] - np.dot(a[k,0:k],b[0:k])
+            b[n-1] = b[n-1]/a[n-1,n-1]
+            for k in range(n-2,-1,-1):
+                b[k] = (b[k] - np.dot(a[k,k+1:n],b[k+1:n]))/a[k,k]
+            return b
+        # Solution of the parameters
+        L = LUdecomp(A)
+        return LUsolve(L,B)
 
-        Expected_Determinant = 195
+    def byGaussElimin(self,A,B):
+        ''' Using Gauss Elimination to solve matrix problems.
+        x = gaussElimin(a,b).
+        Solves [a]{b} = {x} by Gauss elimination.
+        '''
+        def gaussElimin(a,b):
+            n = len(b)
+        # Elimination Phase
+            for k in range(0,n-1):
+                for i in range(k+1,n):
+                    if a[i,k] != 0.0:
+                        lam = a [i,k]/a[k,k]
+                        a[i,k+1:n] = a[i,k+1:n] - lam*a[k,k+1:n]
+                        b[i] = b[i] - lam*b[k]
+        # Back substitution
+            for k in range(n-1,-1,-1):
+                b[k] = (b[k] - np.dot(a[k,k+1:n],b[k+1:n]))/a[k,k]
+            return b
+        # Solving the parameters
+        return gaussElimin(A,B)
 
-        determinant = solvers.get_determinant_from_A(self,Expected_A)
+    def byCholeski(self,A,B):
+        ''' Using Choleski to solve matrix problems.
+        L = choleski(a)
+        Choleski decomposition: [L][L]transpose = [a]
+        Solution phase of Choleski’s decomposition method
+        '''
+        def choleski(a):
+          n = len(a)
+          for k in range(n):
+            try:
+              a[k,k] = math.sqrt(a[k,k] \
+              - np.dot(a[k,0:k],a[k,0:k]))
+            except ValueError:
+              error.err('Matrix is not positive definite')
+            for i in range(k+1,n):
+              a[i,k] = (a[i,k] - np.dot(a[i,0:k],a[k,0:k]))/a[k,k]
+          for k in range(1,n): a[0:k,k] = 0.0
+          return a
 
-        self.assertAlmostEqual(determinant, Expected_Determinant, delta=0.0001)
+        def choleskiSol(L,b):
+          n = len(b)
+        # Solution of [L]{y} = {b}
+          for k in range(n):
+            b[k] = (b[k] - np.dot(L[k,0:k],b[0:k]))/L[k,k]
+        # Solution of [L_transpose]{x} = {y}
+          for k in range(n-1,-1,-1):
+            b[k] = (b[k] - np.dot(L[k+1:n,k],b[k+1:n]))/L[k,k]
+          return b
+        # Solution of the paramaters
+        L = choleski(A)
+        return choleskiSol(L,B)
 
-    def test_get_determinant_from_L_and_U(self):
-        L = np.asarray([[1, 0, 0],
-                        [1, 1, 0],
-                        [1, 5 / 3, 1]], dtype=float)
+    def byLUdecomp3(self,c,d,e,b):
 
-        U = np.asarray([[1, 2, 4],
-                        [0, 3, 21],
-                        [0, 0, 0]], dtype=float)
+        '''Solvng matrix problems using LU decomposition with 3 main diagonals.
+        c,d,e = LUdecomp3(c,d,e).
+        LU decomposition of tridiagonal matrix [c\d\e]. On output
+        {c},{d} and {e} are the diagonals of the decomposed matrix.
+        x = LUsolve(c,d,e,b).
+        Solves [c\d\e]{x} = {b}, where {c}, {d} and {e} are the
+        vectors returned from LUdecomp3.'''
 
-        Expected_Determinant = 195
+        def LUdecomp3(c,d,e):
+            n = len(d)
+            for k in range(1,n):
+                lam = c[k-1]/d[k-1]
+                d[k] = d[k] - lam*e[k-1]
+                c[k-1] = lam
+            return c,d,e
 
-        determinant = solvers.get_determinant_from_L_and_U(self,L,U)
+        def LUsolve3(c,d,e,b):
+            n = len(d)
+            for k in range(1,n):
+                b[k] = b[k] - c[k-1]*b[k-1]
+            b[n-1] = b[n-1]/d[n-1]
+            for k in range(n-2,-1,-1):
+                b[k] = (b[k] - e[k]*b[k+1])/d[k]
+            return b
+        # Solving the parameters problem
+        c,d,e= LUdecomp3(c,d,e)
+        return LUsolve3(c,d,e,b)
 
-        self.assertAlmostEqual(determinant, Expected_Determinant, delta = 0.0001)
+    def byLUdecomp5(self,d,e,f,b):
+        '''Using LU decomposition to solve problems from 5 main diagonals matrixes.
+        d,e,f = LUdecomp5(d,e,f).
+        LU decomposition of symmetric pentadiagonal matrix [a], where
+        {f}, {e} and {d} are the diagonals of [a]. On output
+        {d},{e} and {f} are the diagonals of the decomposed matrix.
+        x = LUsolve5(d,e,f,b).
+        Solves [a]{x} = {b}, where {d}, {e} and {f} are the vectors
+        returned from LUdecomp5.
+        '''
 
-    def test_byGaussElimin(self):
-        A = np.asarray([[2, -3, -1],
-                        [3, 2, -5],
-                        [2, 4, -1]], dtype=float)
 
-        B = np.asarray([[3],
-                        [-9],
-                        [-5]], dtype=float)
+        def LUdecomp5(d,e,f):
+            n = len(d)
+            for k in range(n-2):
+                lam = e[k]/d[k]
+                d[k+1] = d[k+1] - lam*e[k]
+                e[k+1] = e[k+1] - lam*f[k]
+                e[k] = lam
+                lam = f[k]/d[k]
+                d[k+2] = d[k+2] - lam*f[k]
+                f[k] = lam
+            lam = e[n-2]/d[n-2]
+            d[n-1] = d[n-1] - lam*e[n-2]
+            e[n-2] = lam
+            return d,e,f
 
-        expected_x = np.asarray([[32/49],[-8/7],[85/49]], dtype = float)
+        def LUsolve5(d,e,f,b):
+            n = len(d)
+            b[1] = b[1] - e[0]*b[0]
+            for k in range(2,n):
+                b[k] = b[k] - e[k-1]*b[k-1] - f[k-2]*b[k-2]
+            b[n-1] = b[n-1]/d[n-1]
+            b[n-2] = b[n-2]/d[n-2] - e[n-2]*b[n-1]
+            for k in range(n-3,-1,-1):
+                b[k] = b[k]/d[k] - e[k]*b[k+1] - f[k]*b[k+2]
+            return b
+        # Solving the parameters problem.
+        d,e,f = LUdecomp5(d,e,f,b)
+        return LUsolve5(d,e,f,b)
 
-        x = solvers.byGaussElimin(self,A,B)
+    def gaussPivot(self,a,b):
+        '''Solving matrix problems using Gauss Pivoting.
+        x = gaussPivot(a,b,tol=1.0e-12).
+        Solves [a]{x} = {b} by Gauss elimination with
+        scaled row pivoting'''
 
-        n = len(expected_x.tolist())
+        def gausspivot(a,b,tol=1.0e-12):
+            n = len(b)
+        # Set up scale factors
+            s = np.zeros(n)
+            for i in range(n):
+                s[i] = max(np.abs(a[i,:]))
+            for k in range(0,n-1):
+        # Row interchange, if needed
+                p = np.argmax(np.abs(a[k:n,k])/s[k:n]) + k
+                if abs(a[p,k]) < tol:
+                    print ('matrix is singular')
+                    sys.exit()
+                if p != k:
+                    swap.swapRows(b,k,p)
+                    swap.swapRows(s,k,p)
+                    swap.swapRows(a,k,p)
+        # Elimination
+                for i in range(k+1,n):
+                    if a[i,k] != 0.0:
+                        lam = a[i,k]/a[k,k]
+                        a[i,k+1:n] = a[i,k+1:n] - lam*a[k,k+1:n]
+                        b[i] = b[i] - lam*b[k]
 
+            if abs(a[n-1,n-1]) < tol:
+                print ('matrix is singular')
+                sys.exit()
+
+        # Back substitution
+            b[n-1] = b[n-1]/a[n-1,n-1]
+            for k in range(n-2,-1,-1):
+                b[k] = (b[k] - np.dot(a[k,k+1:n],b[k+1:n]))/a[k,k]
+            return b
+        # Solving the parameters problem.
+        return gausspivot(a,b)
+
+    def LUpivot(self,a,b):
+    #    '''Using LU Pivoting to solve matrix problems.
+    #    a,seq = LUdecomp(a,tol=1.0e-9).
+    #    LU decomposition of matrix [a] using scaled row pivoting.
+    #    The returned matrix [a] = [L\U] contains [U] in the upper
+    #    triangle and the nondiagonal terms of [L] in the lower triangle.
+    #    Note that [L][U] is a row-wise permutation of the original [a];
+    #    the permutations are recorded in the vector {seq}.
+    #    x = LUsolve(a,b,seq).
+    #    Solves [L][U]{x} = {b}, where the matrix [a] = [L\U] and the
+    #    permutation vector {seq} are returned from LUdecomp.
+
+        def LUpivotdecomp(a,tol=1.0e-9):
+            n = len(a)
+            seq = np.array(range(n))
+
+          # Set up scale factors
+            s = np.zeros(n)
+            for i in range(n):
+                s[i] = max(abs(a[i,:]))
+
+            for k in range(0,n-1):
+
+              # Row interchange, if needed
+                p = np.argmax(abs(a[k:n,k])/s[k:n]) + k
+                if abs(a[p,k]) <  tol:
+                    print ('matrix is singular')
+                    sys.exit()
+                if p != k:
+                    swap.swapRows(s,k,p)
+                    swap.swapRows(a,k,p)
+                    swap.swapRows(seq,k,p)
+
+              # Elimination
+                for i in range(k+1,n):
+                    if a[i,k] != 0.0:
+                        lam = a[i,k]/a[k,k]
+                        a[i,k+1:n] = a[i,k+1:n] - lam*a[k,k+1:n]
+                        a[i,k] = lam
+            return a,seq
+
+        def LUpivotsolve(a,b,seq):
+            n = len(a)
+
+          # Rearrange constant vector; store it in [x]
+            x = b.copy()
+            for i in range(n):
+                x[i] = b[seq[i]]
+
+          # Solution
+            for k in range(1,n):
+                x[k] = x[k] - np.dot(a[k,0:k],x[0:k])
+            x[n-1] = x[n-1]/a[n-1,n-1]
+            for k in range(n-2,-1,-1):
+               x[k] = (x[k] - np.dot(a[k,k+1:n],x[k+1:n]))/a[k,k]
+            return x
+        # Solving the parameters problem.
+        a,seq = LUpivotdecomp(a)
+        return LUpivotsolve(a,b,seq)
+
+    def rootsearch(f,a,b,dx):
+        x1 = a
+        f1 = f(a)
+        x2 = a + dx
+        f2 = f(x2)
+        while np.sign(f1) == np.sign(f2):
+            if x1 >= b:
+                return None,None
+            x1 = x2; f1 = f2
+            x2 = x1 + dx; f2 = f(x2)
+        else:
+            return x1,x2
+
+    def bisection(f,x1,x2,switch=1,tol=1.0e-9):
+        f1 = f(x1)
+        if f1 == 0.0:
+            return x1
+        f2 = f(x2)
+        if f2 == 0.0:
+            return x2
+        if np.sign(f1) == np.sign(f2):
+            print ('Root is not bracketed')
+            sys.exit()
+        n = int(math.ceil(math.log(abs(x2 - x1)/tol)/math.log(2.0)))
         for i in range(n):
-            self.assertAlmostEqual(expected_x[i], x[i], delta = 0.0001)
+            x3 = 0.5*(x1 + x2)
+            f3 = f(x3)
+        if (switch == 1) and (abs(f3) > abs(f1)) and (abs(f3) > abs(f2)):
+            return None
+        if f3 == 0.0:
+            return x3
+        if np.sign(f2)!= np.sign(f3):
+            x1 = x3
+            f1 = f3
+        else:
+            x2 = x3
+            f2 = f3
+        return (x1 + x2)/2.0
 
-    def test_byLUdecomp(self):
-        A = np.asarray([[4, -2, -3],
-                        [12, 4, -10],
-                        [-16, 28, 18]], dtype=float)
+    def ridder(f,a,b,tol=1.0e-9):
+        fa = f(a)
+        if fa == 0.0:
+            return a
+        fb = f(b)
+        if fb == 0.0:
+            return b
+        if fa*fb > 0.0:
+            print('Root is not bracketed')
+            sys.exit()
+        for i in range(30):
+            # Compute the improved root x from Ridder’s formula
+            c = 0.5*(a + b); fc = f(c)
+            s = math.sqrt(fc**2 - fa*fb)
+            if s == 0.0:
+                return None
+            dx = (c - a)*fc/s
+            if (fa - fb) < 0.0:
+                dx = -dx
+            x = c + dx
+            fx = f(x)
+            # Test for convergence
+            if i > 0:
+                if abs(x - xOld) < tol*max(abs(x),1.0):
+                    return x
+            xOld = x
+            # Re-bracket the root as tightly as possible
+            if fc*fx > 0.0:
+                if fa*fx < 0.0:
+                    b = x
+                    fb = fx
+                else:
+                    a = x
+                    fa = fx
+            else:
+                a = c
+                b = x
+                fa = fc
+                fb = fx
+        return None
 
-        B = np.asarray([[1.1],
-                        [0],
-                        [-2.3]], dtype=float)
+    def newtonRaphson(f,df,x,tol=1.0e-9):
+        for i in range(30):
+            dx = -f(x)/df(x)
+            x = x + dx
+            if abs(dx) < tol:
+                return x
 
-        expected_x = np.asarray([[(1.1+(-3.3+8.7/8)/5+3*8.7/8)/4],
-                              [(-3.3+8.7/8)/10],[8.7/8]],
-                               dtype = float)
+    def newtonRaphson2(f,x,tol=1.0e-9):
+        def jacobian(f,x):
+            h = 1.0e-4
+            n = len(x)
+            jac = np.zeros((n,n))
+            f0 = f(x)
+            for i in range(n):
+                temp = x[i]
+                x[i] = temp + h
+                f1 = f(x)
+                x[i] = temp
+                jac[:,i] = (f1 - f0)/h
+                return jac,f0
+            for i in range(30):
+                    jac,f0 = jacobian(f,x)
+                    if math.sqrt(np.dot(f0,f0)/len(x)) < tol: return x
+                    dx = solvers.gaussPivot(jac,-f0)
+                    x = x + dx
+                    if math.sqrt(np.dot(dx,dx)) < tol*max(max(abs(x)),1.0):
+                        return x
 
-        x = solvers.byLUdecomp(self,A,B)
+    def first_central_difference(n, h, f):
+        ''' Being 'n' the degree of the desired derivative and f the dictionary
+        containing the f(x) of each point. '''
+        if n == 1:
+            derivative = ((-f['x-h']+f['x+h'])/(h))/2
 
-        n = len(expected_x.tolist())
+        elif n == 2:
+            derivative = (f['x-h']-2*f['x']+f['x+h'])/h**2
 
-        for i in range(n):
-            self.assertAlmostEqual(expected_x[i], x[i], delta = 0.0001)
+        elif n == 3:
+            derivative = ((-f['x-2h']+2*f['x-h']-2*f['x']+f['x+2h'])/h**3)/2
 
-    def test_byCholeski(self):
-        A = np.asarray([[1, 1, 1],
-                        [1, 2, 2],
-                        [1, 2, 3]], dtype=float)
+        elif n == 4:
+            derivative = (f['x-2h']-4*f['x-h']+6*f['x']-4*f['x+h']+f['x+2h'])/h**4
+        return derivative
 
-        B = np.asarray([[1],
-                        [3/2],
-                        [3]], dtype=float)
+    def first_foward_finite_difference(n, h, f):
+        '''Similitar to the previous function, this one receives a 'n' as the
+        degree of the desired derivative, and f, as the dictionary containing
+        the f(x) of each points'''
+        if n == 1:
+            derivative = (-f['x']+f['x+h'])/(h)
 
-        expected_x = np.asarray([[1 / 2],
-                                 [-1],
-                                 [3 / 2]], dtype=float)
+        elif n == 2:
+            derivative = (f['x']-2*f['x+h']+f['x+2h'])/h**2
 
-        x = solvers.byCholeski(self,A,B)
+        elif n == 3:
+            derivative = (-f['x']+3*f['x+h']-3*f['x+2h']+f['x+3h'])/h**3
 
+        elif n == 4:
+            derivative = (f['x']-4*f['x+h']+6*f['x+2h']-4*f['x+3h']+f['x+4h'])/h**4
+        return derivative
 
-        n = len(expected_x.tolist())
+    def first_backward_finite_difference(n, h, f):
+        '''Works the same way as the previous one, but it searches for the
+        backward derivative.'''
+        if n == 1:
+            derivative = (f['x']-f['x-h'])/(h)
 
-        for i in range(n):
-            self.assertAlmostEqual(expected_x[i], x[i], delta = 0.0001)
+        elif n == 2:
+            derivative = (f['x']-2*f['x-h']+f['x-2h'])/h**2
 
-    def test_byLUdecomp3(self):
-        d = np.ones((5))*2.0
-        c = np.ones((4))*(-1.0)
-        b = np.array([5.0, -5.0, 4.0, -5.0, 5.0])
-        e = c.copy()
-        x = solvers.byLUdecomp3(self,c,d,e,b)
-        expected_x = np.asarray([2., -1., 1., -1.,2.],dtype=float)
-        n = len(expected_x.tolist())
-        for i in range(n):
-            self.assertAlmostEqual(expected_x[i], x[i], delta = 0.0001)
+        elif n == 3:
+            derivative = (f['x']-3*f['x-h']+3*f['x-2h']-f['x-3h'])/h**3
 
-    def test_gaussPivot(self):
-        A = np.array([[2, -2, 6],
-                      [-2, 4, 3],
-                      [-1, 8, 4]], dtype=float)
+        elif n == 4:
+            derivative = (f['x']-4*f['x-h']+6*f['x-2h']-4*f['x-3h']+f['x-4h'])/h**4
+        return derivative
 
-        B = np.array([[16],
-                      [0],
-                      [-1]], dtype=float)
+    def second_foward_finite_difference(n, h, f):
+        '''Works as the first foward difference, but the truncation error
+        remains at second degree. This one is more accurate than the firsts
+        noncentral differences'''
+        if n == 1:
+            derivative = (-3*f['x']+4*f['x+h']-f['x+2h'])/(2*h)
 
-        x = solvers.gaussPivot(self,A,B)
+        elif n == 2:
+            derivative = (2*f['x']-5*f['x+h']+4*f['x+2h']-f['x+3h'])/h**2
 
-        expected_x = np.array([[1],
-                               [-1],
-                               [2]])
+        elif n == 3:
+            derivative = (-5*f['x']+18*f['x+h']-24*f['x+2h']+14*f['x+3h']-3*f['x+4h'])/2*h**3
 
-        n = len(expected_x.tolist())
-        for i in range(n):
-            self.assertAlmostEqual(expected_x[i], x[i], delta = 0.0001)
+        elif n == 4:
+            derivative = (3*f['x']-14*f['x+h']+26*f['x+2h']-24*f['x+3h']+11*f['x+4h']-2*f['x+5h'])/h**4
+        return derivative
 
-    def test_LUPivot(self):
-        A = np.array([[2, -2, 6],
-                      [-2, 4, 3],
-                      [-1, 8, 4]], dtype=float)
+    def second_backward_finite_difference(n, h, f):
+        '''Works the same way as the previous one, but it searches for the
+        backward derivative.'''
+        if n == 1:
+            derivative = (3*f['x']-4*f['x-h']+f['x-2h'])/(2*h)
 
-        B = np.array([[16],
-                      [0],
-                      [-1]], dtype=float)
+        elif n == 2:
+            derivative = (2*f['x']-5*f['x-h']+4*f['x-2h']-f['x-3h'])/h**2
 
-        x = solvers.LUpivot(self,A,B)
+        elif n == 3:
+            derivative = (5*f['x']-18*f['x-h']+24*f['x-2h']-14*f['x-3h']+3*f['x-4h'])/2*h**3
 
-        expected_x = np.array([[1],
-                               [-1],
-                               [2]])
+        elif n == 4:
+            derivative = (3*f['x']-14*f['x-h']+26*f['x-2h']-24*f['x-3h']+11*f['x-4h']-2*f['x-5h'])/h**4
+        return derivative
 
-        n = len(expected_x.tolist())
-        for i in range(n):
-            self.assertAlmostEqual(expected_x[i], x[i], delta = 0.0001)
-
-    def test_rootsearch(self):
-        def f(x):
-            return x**3 - 10.0*x**2 + 5.0
-        x1 = 0.0
-        x2 = 1.0
-        for i in range(4):
-            dx = (x2 - x1)/10.0
-            x1,x2 = solvers.rootsearch(f,x1,x2,dx)
-        x = []
-        x.append((x1 + x2)/2.0)
-        expected_x = []
-        expected_x.append(0.7346)
-        n = len(expected_x)
-        for i in range(n):
-            self.assertAlmostEqual(expected_x[i], x[i], delta = 0.05)
-
-    def test_bisection(self):
-        def f(x):
-            return x**3 - 10.0*x**2 + 5.0
-        x = []
-        x.append(solvers.bisection(f, 0.0, 1.0, tol=1.0e-4))
-        expected_x = []
-        expected_x.append(0.7346)
-        n = len(expected_x)
-        for i in range(n):
-            self.assertAlmostEqual(expected_x[i], x[i], delta = 0.05)
-
-    def test_ridder(self):
-        def f(x):
-            a = (x - 0.3)**2 + 0.01
-            b = (x - 0.8)**2 + 0.04
-            return 1.0/a - 1.0/b
-        x = []
-        x.append(solvers.ridder(f,0.0,1.0))
-        expected_x = []
-        expected_x.append(0.5800000000000001)
-        n = len(expected_x)
-        for i in range(n):
-            self.assertAlmostEqual(expected_x[i], x[i], delta = 0.000001)
-
-    def test_newtonraphson(self):
-        def f(x): return x**4 - 6.4*x**3 + 6.45*x**2 + 20.538*x - 31.752
-        def df(x): return 4.0*x**3 - 19.2*x**2 + 12.9*x + 20.538
-        x = []
-        x.append(solvers.newtonRaphson(f,df,2.0))
-        expected_x = []
-        expected_x.append(2.09999998403)
-        n = len(expected_x)
-        for i in range(n):
-            self.assertAlmostEqual(expected_x[i], x[i], delta = 0.000001)
-
-    def test_newtonRaphson2(self):
-        def f(x):
-            f = np.zeros(len(x))
-            f[0] = math.sin(x[0]) + x[1]**2 + math.log(x[2]) - 7.0
-            f[1] = 3.0*x[0] + 2.0**x[1] - x[2]**3 + 1.0
-            f[2] = x[0] + x[1] + x[2] - 5.0
-            return f
-        x = np.array([1.0, 1.0, 1.0])
-        result = (solvers.newtonRaphson2(f,x))
-        self.assertEqual(result,None)
-
-    def test_central_finite_difference(self):
-        f = {'x-2h': 0.,'x-h': 0.0819,'x': 0.1341,'x+h': 0.1646,'x+2h': 0.1797}
-        n = 1
-        h = 0.1
-        expected_f1 = 0.4135
-        f1 = solvers.first_central_difference(n, h, f)
-        self.assertAlmostEqual(expected_f1, f1, delta = 0.0001)
-        n = 2
-        expected_f2 = -2.17
-        f2 = solvers.first_central_difference(n, h, f)
-        self.assertAlmostEqual(expected_f2, f2, delta = 0.0001)
-
-    def test_first_foward_finite_difference(self):
-        f = {'x': 0.,'x+h': 0.0819,'x+2h': 0.1341,'x+3h': 0.1646,'x+4h': 0.1797}
-        n = 1
-        h = 0.1
-        expected_f1 = 0.819
-        f1 = solvers.first_foward_finite_difference(n, h, f)
-        self.assertAlmostEqual(expected_f1, f1, delta = 0.0001)
-        n = 2
-        expected_f2 = -2.97
-        f2 = solvers.first_foward_finite_difference(n, h, f)
-        self.assertAlmostEqual(expected_f2, f2, delta = 0.0001)
-
-    def test_first_backward_finite_difference(self):
-        f = {'x-4h': 0.,'x-3h': 0.0819,'x-2h': 0.1341,'x-h': 0.1646,'x': 0.1797}
-        n = 1
-        h = 0.1
-        expected_f1 = 0.151
-        f1 = solvers.first_backward_finite_difference(n, h, f)
-        self.assertAlmostEqual(expected_f1, f1, delta = 0.0001)
-        n = 2
-        expected_f2 = -1.54
-        f2 = solvers.first_backward_finite_difference(n, h, f)
-        self.assertAlmostEqual(expected_f2, f2, delta = 0.0001)
-
-    def test_second_foward_finite_difference(self):
-        f = {'x': 0.,'x+h': 0.0819,'x+2h': 0.1341,'x+3h': 0.1646,'x+4h': 0.1797}
-        n = 1
-        h = 0.1
-        expected_f1 = 0.9675
-        f1 = solvers.second_foward_finite_difference(n, h, f)
-        self.assertAlmostEqual(expected_f1, f1, delta = 0.0001)
-        n = 2
-        expected_f2 = -3.77
-        f2 = solvers.second_foward_finite_difference(n, h, f)
-        self.assertAlmostEqual(expected_f2, f2, delta = 0.0001)
-
-    def test_second_backward_finite_difference(self):
-        f = {'x-4h': 0.,'x-3h': 0.0819,'x-2h': 0.1341,'x-h': 0.1646,'x': 0.1797}
-        n = 1
-        h = 0.1
-        expected_f1 = 0.074
-        f1 = solvers.second_backward_finite_difference(n, h, f)
-        self.assertAlmostEqual(expected_f1, f1, delta = 0.0001)
-        n = 2
-        expected_f2 = -0.91
-        f2 = solvers.second_backward_finite_difference(n, h, f)
-        self.assertAlmostEqual(expected_f2, f2, delta = 0.0001)
-
-
-
-
-#richardson_extrapolation está funcionando, mas precisa de f1
-#f2, h1 e h2. é bom tentar resolver isso e fazer o teste
+    def richardson_extrapolation(n, h1, h2, f1, f2):
+        '''this method boosts the accuracy of certain difference,
+        G is the most accurate approximation we could achieve, 'p'
+        is a constant which we'll determine at this function as 2,
+        'n' is the degree of the derivative, h1 and h2 the two 'steps'
+        we take to approximate the derivative and f the dictionary
+        containing the f(x) of each points'''
+        p = 2
+        if h1 > h2:
+            h2 = h
+            h2 = h1
+            h1 = h2
+        g1 = solvers.second_foward_finite_difference(n,h1,f1)
+        g2 = solvers.second_foward_finite_difference(n,h2,f2)
+        G = (((h2/h1)**p)*g1-g2)/((h2/h1)**p-1)
+        return G
